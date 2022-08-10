@@ -10,6 +10,7 @@
     * [Weak Password Reset Token](#weak-password-reset-token)
     * [Leaking Password Reset Token](#leaking-password-reset-token)
     * [Password Reset Via Username Collision](#password-reset-via-username-collision)
+    * [Account takeover due to unicode normalization issue](#account-takeover-due-to-unicode-normalization-issue)
 * [Account Takeover Via Cross Site Scripting](#account-takeover-via-cross-site-scripting)
 * [Account Takeover Via HTTP Request Smuggling](#account-takeover-via-http-request-smuggling)
 * [Account Takeover via CSRF](#account-takeover-via-csrf)
@@ -27,6 +28,7 @@
     * [Clickjacking on 2FA Disabling Page](#clickjacking-on-2fa-disabling-page)
     * [Enabling 2FA doesn't expire Previously active Sessions](#enabling-2fa-doesnt-expire-previously-active-sessions)
     * [Bypass 2FA with null or 000000](#bypass-2fa-with-null-or-000000)
+    * [Bypass 2FA with array](#bypass-2fa-with-array)
 * [References](#references)
 
 ## Password Reset Feature
@@ -115,6 +117,13 @@ Try to determine if the token expire or if it's always the same, in some cases t
 
 The platform CTFd was vulnerable to this attack. 
 See: [CVE-2020-7245](https://nvd.nist.gov/vuln/detail/CVE-2020-7245)
+
+
+### Account takeover due to unicode normalization issue
+
+- Victim account: `demo@gmail.com`
+- Attacker account: `demⓞ@gmail.com`
+
 
 ## Account Takeover Via Cross Site Scripting
 
@@ -221,6 +230,22 @@ If the session is already hijacked and there is a session timeout vuln
 
 ### Bypass 2FA with null or 000000
 Enter the code **000000** or **null** to bypass 2FA protection.
+
+### Bypass 2FA with array
+
+```json
+{
+    "otp":[
+        "1234",
+        "1111",
+        "1337", // GOOD OTP
+        "2222",
+        "3333",
+        "4444",
+        "5555"
+    ]
+}
+```
 
 
 ## TODO
